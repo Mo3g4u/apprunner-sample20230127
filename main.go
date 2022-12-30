@@ -2,15 +2,19 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
+	"errors"
 	"fmt"
+	"github.com/go-sql-driver/mysql"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/rds/auth"
-	_ "github.com/go-sql-driver/mysql"
 )
 
 func main() {
@@ -20,6 +24,11 @@ func main() {
 	var dbPort int = 3306
 	var dbEndpoint string = fmt.Sprintf("%s:%d", dbHost, dbPort)
 	var region string = "ap-northeast-1"
+
+	tlsName := "rds"
+	if err := registerTlsConfig("./ap-northeast-1-bundle.pem", tlsName); err != nil {
+		panic(err)
+	}
 
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
@@ -32,8 +41,8 @@ func main() {
 		panic("failed to create authentication token: " + err.Error())
 	}
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?tls=true&allowCleartextPasswords=true",
-		dbUser, authenticationToken, dbEndpoint, dbName,
+	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?tls=%s&allowCleartextPasswords=true",
+		dbUser, authenticationToken, dbEndpoint, dbName, tlsName,
 	)
 
 	db, err := sql.Open("mysql", dsn)
@@ -43,7 +52,7 @@ func main() {
 
 	err = db.Ping()
 	if err != nil {
-		panic(err)
+		panic(err) // 証明書を設定しないと panic: x509: certificate signed by unknown authority が発生
 	}
 
 	handler := func(w http.ResponseWriter, _ *http.Request) {
@@ -51,4 +60,22 @@ func main() {
 	}
 	http.HandleFunc("/", handler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+func registerTlsConfig(pemPath, tlsConfigKey string) (err error) {
+	caCertPool := x509.NewCertPool()
+	pem, err := ioutil.ReadFile(pemPath)
+	if err != nil {
+		return
+	}
+
+	if ok := caCertPool.AppendCertsFromPEM(pem); !ok {
+		return errors.New("pem error")
+	}
+	mysql.RegisterTLSConfig(tlsConfigKey, &tls.Config{
+		ClientCAs:          caCertPool,
+		InsecureSkipVerify: true, // 必要に応じて
+	})
+
+	return
 }
