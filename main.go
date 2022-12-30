@@ -12,10 +12,13 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/rds/auth"
 )
+
+var db *sql.DB
 
 func main() {
 	var dbName string = "bookcase"
@@ -45,7 +48,7 @@ func main() {
 		dbUser, authenticationToken, dbEndpoint, dbName, tlsName,
 	)
 
-	db, err := sql.Open("mysql", dsn)
+	db, err = sql.Open("mysql", dsn)
 	if err != nil {
 		panic(err)
 	}
@@ -56,10 +59,32 @@ func main() {
 	}
 
 	handler := func(w http.ResponseWriter, _ *http.Request) {
-		io.WriteString(w, "Hello AppRunner!\n")
+		// SQLの実行
+		rows, err := db.Query("SELECT * FROM authors")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer rows.Close()
+
+		names := []string{}
+		// SQLの実行
+		for rows.Next() {
+			var author Author
+			if err := rows.Scan(&author.authorId, &author.name); err != nil {
+				panic(err.Error())
+			}
+			names = append(names, author.name)
+		}
+
+		io.WriteString(w, fmt.Sprintf("Hello AppRunner! %s", strings.Join(names, ",")))
 	}
 	http.HandleFunc("/", handler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+type Author struct {
+	authorId int
+	name     string
 }
 
 func registerTlsConfig(pemPath, tlsConfigKey string) (err error) {
