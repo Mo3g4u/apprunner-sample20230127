@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"database/sql"
@@ -12,43 +11,31 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strings"
-
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/feature/rds/auth"
 )
 
 var db *sql.DB
 
 func main() {
 	var dbName string = "bookcase"
-	var dbUser string = "bookuser"
+	var dbUser string = "admin"
 	var dbHost string = "database-1.cluster-cxw8iq8t33nv.ap-northeast-1.rds.amazonaws.com"
 	var dbPort int = 3306
 	var dbEndpoint string = fmt.Sprintf("%s:%d", dbHost, dbPort)
-	var region string = "ap-northeast-1"
 
 	tlsName := "rds"
 	if err := registerTlsConfig("./ap-northeast-1-bundle.pem", tlsName); err != nil {
 		panic(err)
 	}
 
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		panic("configuration error: " + err.Error())
-	}
-
-	authenticationToken, err := auth.BuildAuthToken(
-		context.TODO(), dbEndpoint, region, dbUser, cfg.Credentials)
-	if err != nil {
-		panic("failed to create authentication token: " + err.Error())
-	}
+	pw := os.Getenv("DB_PASSWORD")
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?tls=%s&allowCleartextPasswords=true",
-		dbUser, authenticationToken, dbEndpoint, dbName, tlsName,
+		dbUser, pw, dbEndpoint, dbName, tlsName,
 	)
 
-	db, err = sql.Open("mysql", dsn)
+	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		panic(err)
 	}

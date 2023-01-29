@@ -1,0 +1,14 @@
+version: 1.0
+runtime: go1
+build:
+  commands:
+    build:
+      - go install
+run:
+  env:
+    - name: ENV
+      value: apprunner
+  secrets:
+    - name: DB_PASSWORD
+      value-from: "arn:aws:secretsmanager:ap-northeast-1:151818454725:secret:aurora-admin-apJjFJ"
+  command: go run main.go
