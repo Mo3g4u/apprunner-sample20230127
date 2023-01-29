@@ -1,8 +1,12 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
+	"errors"
 	"fmt"
+	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 	"io"
 	"log"
@@ -20,7 +24,12 @@ func main() {
 	var dbPort string = "3306"
 	pw := os.Getenv("DB_PASSWORD")
 
-	db, err := sql.Open("mysql", dbUser+":"+pw+"@tcp("+dbHost+":"+dbPort+")/"+dbName+"?allowCleartextPasswords=true")
+	tlsName := "rds"
+	if err := registerTlsConfig("./ap-northeast-1-bundle.pem", tlsName); err != nil {
+		panic(err)
+	}
+
+	db, err := sql.Open("mysql", dbUser+":"+pw+"@tcp("+dbHost+":"+dbPort+")/"+dbName+"?tls=rds&allowCleartextPasswords=true")
 	if err != nil {
 		panic(err)
 	}
@@ -57,4 +66,22 @@ func main() {
 type Author struct {
 	authorId int
 	name     string
+}
+
+func registerTlsConfig(pemPath, tlsConfigKey string) (err error) {
+	caCertPool := x509.NewCertPool()
+	pem, err := os.ReadFile(pemPath)
+	if err != nil {
+		return
+	}
+
+	if ok := caCertPool.AppendCertsFromPEM(pem); !ok {
+		return errors.New("pem error")
+	}
+	mysql.RegisterTLSConfig(tlsConfigKey, &tls.Config{
+		ClientCAs:          caCertPool,
+		InsecureSkipVerify: true, // 必要に応じて
+	})
+
+	return
 }
