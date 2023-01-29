@@ -20,7 +20,7 @@ func main() {
 	var dbPort string = "3306"
 	pw := os.Getenv("DB_PASSWORD")
 
-	db, err := sql.Open("mysql", dbUser+":"+pw+"@tcp("+dbHost+":"+dbPort+")/"+dbName)
+	db, err := sql.Open("mysql", dbUser+":"+pw+"@tcp("+dbHost+":"+dbPort+")/"+dbName+"?allowCleartextPasswords=true")
 	if err != nil {
 		panic(err)
 	}
