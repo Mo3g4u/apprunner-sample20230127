@@ -23,6 +23,7 @@ func main() {
 	var dbHost string = "database-1.cluster-cxw8iq8t33nv.ap-northeast-1.rds.amazonaws.com"
 	var dbPort string = "3306"
 	pw := os.Getenv("DB_PASSWORD")
+	log.Println(pw)
 
 	tlsName := "rds"
 	if err := registerTlsConfig("./ap-northeast-1-bundle.pem", tlsName); err != nil {
