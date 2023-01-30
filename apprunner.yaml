@@ -9,6 +9,6 @@ run:
     - name: ENV
       value: apprunner
   secrets:
-    - name: DB_PASSWORD
+    - name: DB_SETTINGS
       value-from: "arn:aws:secretsmanager:ap-northeast-1:151818454725:secret:aurora-admin-apJjFJ"
   command: go run main.go
