@@ -31,7 +31,7 @@ func main() {
 		panic(err)
 	}
 
-	db, err := sql.Open("mysql", rds.Username+":"+rds.Password+"@tcp("+rds.Host+":"+string(rds.Port)+")/"+dbName)
+	db, err := sql.Open("mysql", rds.Username+":"+rds.Password+"@tcp("+rds.Host+":3306)/"+dbName)
 	if err != nil {
 		panic(err)
 	}
