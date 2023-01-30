@@ -30,6 +30,7 @@ func main() {
 	if err := json.Unmarshal([]byte(jsonStr), &rds); err != nil {
 		panic(err)
 	}
+	log.Printf("%#v¥n", rds)
 
 	db, err := sql.Open("mysql", rds.Username+":"+rds.Password+"@tcp("+rds.Host+":3306)/"+dbName)
 	if err != nil {
