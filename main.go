@@ -1,12 +1,9 @@
 package main
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"database/sql"
-	"errors"
+	"encoding/json"
 	"fmt"
-	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 	"io"
 	"log"
@@ -17,20 +14,24 @@ import (
 
 var db *sql.DB
 
-func main() {
-	var dbName string = "bookcase"
-	var dbUser string = "admin"
-	var dbHost string = "database-1.cluster-cxw8iq8t33nv.ap-northeast-1.rds.amazonaws.com"
-	var dbPort string = "3306"
-	pw := os.Getenv("DB_PASSWORD")
-	log.Println(pw)
+type RDS struct {
+	Username            string `json:"username"`
+	Password            string `json:"password"`
+	Engine              string `json:"engine"`
+	Host                string `json:"host"`
+	Port                int    `json:"port"`
+	DbClusterIdentifier string `json:"dbClusterIdentifier"`
+}
 
-	tlsName := "rds"
-	if err := registerTlsConfig("./ap-northeast-1-bundle.pem", tlsName); err != nil {
+func main() {
+	dbName := "bookcase"
+	jsonStr := os.Getenv("DB_SETTINGS")
+	var rds RDS
+	if err := json.Unmarshal([]byte(jsonStr), &rds); err != nil {
 		panic(err)
 	}
 
-	db, err := sql.Open("mysql", dbUser+":"+pw+"@tcp("+dbHost+":"+dbPort+")/"+dbName+"?tls=rds&allowCleartextPasswords=true")
+	db, err := sql.Open("mysql", rds.Username+":"+rds.Password+"@tcp("+rds.Host+":"+string(rds.Port)+")/"+dbName)
 	if err != nil {
 		panic(err)
 	}
@@ -67,22 +68,4 @@ func main() {
 type Author struct {
 	authorId int
 	name     string
-}
-
-func registerTlsConfig(pemPath, tlsConfigKey string) (err error) {
-	caCertPool := x509.NewCertPool()
-	pem, err := os.ReadFile(pemPath)
-	if err != nil {
-		return
-	}
-
-	if ok := caCertPool.AppendCertsFromPEM(pem); !ok {
-		return errors.New("pem error")
-	}
-	mysql.RegisterTLSConfig(tlsConfigKey, &tls.Config{
-		ClientCAs:          caCertPool,
-		InsecureSkipVerify: true, // 必要に応じて
-	})
-
-	return
 }
