@@ -24,15 +24,19 @@ type RDS struct {
 }
 
 func main() {
-	dbName := "bookcase"
-	jsonStr := os.Getenv("DB_SETTINGS")
+	jsonStr := os.Getenv("RDS_CONNECTION_JSON")
 	var rds RDS
 	if err := json.Unmarshal([]byte(jsonStr), &rds); err != nil {
 		panic(err)
 	}
-	log.Printf("%#v¥n", rds)
 
-	db, err := sql.Open("mysql", rds.Username+":"+rds.Password+"@tcp("+rds.Host+":3306)/"+dbName)
+	dbName := "bookcase"
+	dbEndpoint := fmt.Sprintf("%s:%d", rds.Host, rds.Port)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s",
+		rds.Username, rds.Password, dbEndpoint, dbName,
+	)
+
+	db, err := sql.Open(rds.Engine, dsn)
 	if err != nil {
 		panic(err)
 	}
@@ -62,6 +66,7 @@ func main() {
 
 		io.WriteString(w, fmt.Sprintf("Hello AppRunner! %s", strings.Join(names, ",")))
 	}
+
 	http.HandleFunc("/", handler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
